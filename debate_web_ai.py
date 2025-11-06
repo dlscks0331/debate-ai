@@ -7,16 +7,19 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 🔁 GPT 호출 함수
 def call_llm(system: str, messages: list[dict], max_tokens: int = 512, temperature: float = 0.7) -> str:
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        temperature=temperature,
-        max_tokens=max_tokens,
-        messages=[
-            {"role": "system", "content": system},
-            *messages
-        ]
-    )
-    return response.choices[0].message["content"]
+    client = openai.OpenAI()  # 새 클라이언트 객체 생성
+
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": system},
+        *messages
+    ],
+    max_tokens=max_tokens,
+    temperature=temperature
+)
+return response.choices[0].message.content
+
 
 # 🧠 토론 로직
 def run_debate(topic: str) -> list[str]:
