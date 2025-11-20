@@ -2,56 +2,77 @@ import streamlit as st
 import openai
 import os
 
-# ✅ OpenAI 키 불러오기 (환경변수에서)
+# API 키 설정 (환경 변수 또는 직접 입력)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-st.set_page_config(page_title="토론 참여형 AI", page_icon="🤖")
-st.title("🗣️ 토론 참여형 AI")
-st.write("주제를 입력하면 AI가 찬반 토론을 벌입니다.")
+# LLM 호출 함수
+def call_llm(role, turn, move_type, content):
+    system = "너는 논리적이고 명확한 주장을 펼치는 토론 AI야. 모든 응답은 사람이 읽기 쉽게 한국어로 해."
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": f'{content}'}
+    ]
 
-# ✅ 사용자 입력
-topic = st.text_input("토론 주제를 입력하세요", "AI는 인간 교사를 대체할 수 있는가")
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        max_tokens=512
+    )
+    return response.choices[0].message.content
 
-# ✅ 토론 버튼
-if st.button("토론 시작"):
-    with st.spinner("토론 생성 중..."):
-        # 시스템 프롬프트
-        system_prompt = f"""
-        너는 논리적인 토론에 참여하는 AI야. 역할은 찬성측 Debater_A, 반대측 Debater_B, 그리고 심판 Judge가 있어.
-        응답은 JSON 형식 설명 없이 바로 시작하고, 이어서 사람이 읽을 수 있는 한국어 텍스트로 주장·반박을 보여줘.
-        주제: {topic}
-        """
+# Streamlit UI
+st.set_page_config(page_title="AI 토론 챗봇", layout="centered")
+st.title("🗣️ AI 토론 챗봇")
 
-        def call_llm(role, turn, move_type, message):
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f'{{"role":"{role}","turn":{turn},"move_type":"{move_type}"}}\n{message}'}
-                ],
-                temperature=0.7,
-                max_tokens=700
-            )
-            return response.choices[0].message.content
+# 프리미엄 여부 기본값
+paid = False
 
-        st.subheader("1️⃣ 개회사 (찬성)")
-        st.write(call_llm("Debater_A", 1, "constructive", f"{topic}에 대한 찬성 입장의 주장과 근거를 설명해줘."))
-
-        st.subheader("2️⃣ 반박 (반대)")
-        st.write(call_llm("Debater_B", 2, "rebuttal", "위 주장에 조목조목 반박하고 질문도 추가해줘."))
-
-        st.subheader("3️⃣ 교차질의 (찬성)")
-        st.write(call_llm("Debater_A", 3, "cross", "상대에게 교차질의 2개를 만들어줘."))
-
-        st.subheader("4️⃣ 평가 및 판정 (Judge)")
-        st.write(call_llm("Judge", 4, "weighing", "양측의 주장 강점, 근거, 설득력 등을 종합 평가해줘."))
-
-        st.subheader("5️⃣ 최종 요약 (반대)")
-        st.write(call_llm("Debater_B", 5, "closing", "최종 요약과 한줄 결론을 제시해줘."))
-
-# ✅ 사이드바 - 프리미엄 후원
+# 사이드바 - 프리미엄 전환 UI
 with st.sidebar:
     st.markdown("## 💎 프리미엄 후원하기")
     if st.button("💸 프리미엄 전환"):
-        st.success("감사합니다! 아래 QR로 후원해주세요.")
-        st.image("assets/toss_qr.png", caption="QR 결제 (토스)", width=250)
+        st.image("assets/toss_qr.png", caption="토스 후원 QR", width=250)
+        st.info("QR 결제를 완료하셨다면 아래 체크박스를 눌러주세요.")
+
+    paid = st.checkbox("✅ 후원 완료했어요!")
+
+# 주제 입력
+st.markdown("### 📌 토론 주제를 입력하세요")
+topic = st.text_input("예: AI는 인간 교사를 대체할 수 있는가")
+
+if st.button("토론 시작") and topic:
+    st.success("✅ 토론을 시작합니다!")
+
+    # 개회사
+    st.subheader("[1] 찬성 측 개회사")
+    intro = call_llm("Debater_A", 1, "constructive", f'{"role":"Debater_A","turn":1,"move_type":"constructive"}\n주제: {topic}에 대한 개회사를 주장-근거 형식으로 써줘.')
+    st.write(intro)
+
+    # 반박
+    st.subheader("[2] 반대 측 반박")
+    rebuttal = call_llm("Debater_B", 2, "rebuttal", f'{"role":"Debater_B","turn":2,"move_type":"rebuttal"}\n위 주장을 조목조목 반박하고 질문도 덧붙여줘.')
+    st.write(rebuttal)
+
+    # 교차질의
+    st.subheader("[3] 찬성 측 교차질의")
+    cross = call_llm("Debater_A", 3, "cross", f'{"role":"Debater_A","turn":3,"move_type":"cross"}\n상대에게 교차질의 2개 만들어줘.')
+    st.write(cross)
+
+    # 평가
+    st.subheader("[4] 심판의 평가")
+    judge = call_llm("Judge", 4, "weighing", f'{"role":"Judge","turn":4,"move_type":"weighing"}\n양측 주장의 강점, 근거, 영향력 등을 비교 평가해줘.')
+    st.write(judge)
+
+    # 마무리
+    st.subheader("[5] 반대 측 마무리")
+    closing = call_llm("Debater_B", 5, "closing", f'{"role":"Debater_B","turn":5,"move_type":"closing"}\n최종 요약과 한줄 결론 제시.')
+    st.write(closing)
+
+    # 프리미엄 표시
+    if paid:
+        st.success("🎉 프리미엄 모드가 활성화되었습니다! 감사합니다.")
+    else:
+        st.warning("🔒 프리미엄 모드가 꺼져 있습니다. 사이드바에서 후원을 진행해주세요.")
+
+elif st.button("토론 시작"):
+    st.error("❗ 토론 주제를 먼저 입력해주세요.")
