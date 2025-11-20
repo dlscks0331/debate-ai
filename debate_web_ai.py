@@ -1,54 +1,62 @@
-import openai
 import streamlit as st
+import openai
 import os
 
-# ✅ 여기에 너의 API 키 붙여넣기
+# API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# 🔁 GPT 호출 함수
-def call_llm(system: str, messages: list[dict], max_tokens: int = 512, temperature: float = 0.7) -> str:
-    client = openai.OpenAI()
+# ------------------------
+# UI 시작
+# ------------------------
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+st.set_page_config(page_title="토론 참여형 AI", layout="centered")
+st.title("🗣️ 토론 참여형 AI")
+st.markdown("GPT를 이용한 한국어 토론 시뮬레이터")
+
+# 프리미엄 모드 버튼
+st.sidebar.markdown("## 💎 프리미엄 모드")
+is_premium = st.sidebar.button("🚀 프리미엄으로 전환")
+
+# 상태 저장
+if is_premium:
+    st.session_state["is_premium"] = True
+    st.sidebar.success("✅ 프리미엄 모드가 활성화되었습니다!")
+elif "is_premium" not in st.session_state:
+    st.session_state["is_premium"] = False
+
+# 현재 모드 표시
+if st.session_state["is_premium"]:
+    st.markdown("### 🌟 프리미엄 모드 활성화 중")
+else:
+    st.markdown("💡 현재는 기본 모드입니다.")
+
+# 주제 입력
+topic = st.text_input("토론 주제를 입력하세요", placeholder="예: AI는 인간 교사를 대체할 수 있는가")
+start_button = st.button("🟢 토론 시작")
+
+# ------------------------
+# 실행 로직 (단순 버전 예시)
+# ------------------------
+
+def call_llm(system, messages, model="gpt-3.5-turbo"):
+    response = openai.ChatCompletion.create(
+        model=model,
         messages=[
             {"role": "system", "content": system},
             *messages
         ],
-        max_tokens=max_tokens,
-        temperature=temperature
+        temperature=0.7,
+        max_tokens=512
     )
+    return response.choices[0].message["content"]
 
-    return response.choices[0].message.content
+if start_button and topic:
+    st.info(f"주제: {topic}")
+    system_prompt = f"너는 논리적인 토론 AI야. 주제는 {topic} 이고, JSON과 한글 본문을 모두 출력해."
 
-
-
-# 🧠 토론 로직
-def run_debate(topic: str) -> list[str]:
-    outputs = []
-    system_prompt = f"너는 논리적인 토론 AI야. 모든 응답은 JSON 형식으로 시작하고, 이어서 사람이 읽을 수 있는 한국어 본문을 출력해.\n주제: {topic}"
-
-    prompts = [
-        {"role": "user", "content": f'{{"role":"Debater_A","turn":1,"move_type":"constructive"}}\n주제: {topic}에 대한 개회사를 주장-근거 형식으로 써줘.'},
-        {"role": "user", "content": f'{{"role":"Debater_B","turn":2,"move_type":"rebuttal"}}\n위 주장을 조목조목 반박하고 질문도 덧붙여줘.'},
-        {"role": "user", "content": f'{{"role":"Debater_A","turn":3,"move_type":"cross"}}\n상대에게 교차질의 2개 만들어줘.'},
-        {"role": "user", "content": f'{{"role":"Judge","turn":4,"move_type":"weighing"}}\n양측 주장의 강점, 근거, 영향력 등을 비교 평가해줘.'},
-        {"role": "user", "content": f'{{"role":"Debater_B","turn":5,"move_type":"closing"}}\n최종 요약과 한줄 결론 제시.'}
-    ]
-
-    for p in prompts:
-        output = call_llm(system_prompt, [p])
-        outputs.append(output)
+    # 단순 예시 프롬프트
+    messages = [{"role": "user", "content": f'{"role":"Debater_A","turn":1,"move_type":"constructive"}\n주제: {topic}에 대한 개회사를 주장-근거 형식으로 써줘.'}]
     
-    return outputs# 🖥️ Streamlit UI 구성
-st.title("🗣️ AI 토론 생성기 (GPT-3.5)")
-st.caption("OpenAI GPT를 활용한 실시간 토론 시뮬레이션")
-
-topic = st.text_input("💡 토론 주제를 입력하세요:", "청소년의 스마트폰 사용을 제한해야 하는가")
-
-if st.button("🎬 토론 시작"):
-    with st.spinner("토론 생성 중..."):
-        results = run_debate(topic)
-        for i, r in enumerate(results):
-            st.subheader(f"📌 단계 {i+1}")
-            st.write(r)
+    result = call_llm(system_prompt, messages)
+    st.markdown("#### 🧠 AI 응답")
+    st.write(result)
