@@ -49,11 +49,24 @@ def call_llm(role, turn, move_type, topic):
     )
     return response.choices[0].message.content
 
-# ✅ 토론 단계 실행 함수
+# ✅ 토론 실행 함수
 def run_debate(topic):
     st.markdown("---")
     st.subheader("🔹 1. 개회사 (찬성측)")
     st.write(call_llm("Debater_A", 1, "constructive", topic))
 
     st.subheader("🔹 2. 반박 (반대측)")
-    st.write(call_llm("Debater_B", 2,
+    st.write(call_llm("Debater_B", 2, "rebuttal", topic))
+
+    st.subheader("🔹 3. 교차질의 (찬성측)")
+    st.write(call_llm("Debater_A", 3, "cross", topic))
+
+    st.subheader("🔹 4. 비교 평가 (심판)")
+    st.write(call_llm("Judge", 4, "weighing", topic))
+
+    st.subheader("🔹 5. 마무리 요약 (반대측)")
+    st.write(call_llm("Debater_B", 5, "closing", topic))
+
+# ✅ 실행
+if start and topic:
+    run_debate(topic)
