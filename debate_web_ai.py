@@ -1,9 +1,9 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import os
 
-# ✅ 환경 변수에서 API 키 불러오기
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ✅ 클라이언트 생성
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ✅ Streamlit 페이지 설정
 st.set_page_config(page_title="토론 참여형 AI", layout="centered")
@@ -31,9 +31,9 @@ else:
 topic = st.text_input("토론 주제를 입력하세요", placeholder="예: AI는 인간 교사를 대체할 수 있는가")
 start_button = st.button("🟢 토론 시작")
 
-# ✅ GPT 호출 함수
+# ✅ GPT 호출 함수 (신버전 API)
 def call_llm(system, messages, model="gpt-3.5-turbo"):
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system},
@@ -42,7 +42,7 @@ def call_llm(system, messages, model="gpt-3.5-turbo"):
         temperature=0.7,
         max_tokens=512
     )
-    return response.choices[0].message["content"]
+    return response.choices[0].message.content
 
 # ✅ 토론 실행
 def run_debate(topic):
